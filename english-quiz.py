@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
 
 CATEGORIES = [
@@ -27,7 +26,7 @@ CATEGORIES = [
 def generate_quiz(category):
     """Generate a quiz using the Anthropic API."""
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"""Generate a {category} English quiz suitable for B2-level (intermediate) adult learners.
+    prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
 
 The quiz should:
 - Have a clean, unambiguous problem statement and 5 questions around the theme
