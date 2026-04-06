@@ -28,11 +28,12 @@ def generate_quiz(category):
     prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
 
 The quiz should:
-- Have a clean, unambiguous problem statement and 5 questions around the theme
-- Be challenging but doable with reasonable confidence in 5-10 minutes
+- Have a clean, unambiguous problem statement and 5 questions about English {category} or the chosen sub-theme
+- Be challenging but doable with reasonable confidence
 - Have a specific answer to each question
 - Be humorous, interesting, or surprising at times (not required)
-- Keep the answer concise and under 1500 characters total, preferably significantly shorter
+- Keep the answer concise and significantly under 1500 characters
+- If multiple choice, ensure the answers are not all the same letter (e.g., not all answer choice A)
 - Provide a response consistent with Discord formatting:
    - *italics* **bold** ***bold italics*** __underscore__ etc. 
 
@@ -42,8 +43,7 @@ Respond in this exact JSON format with no other text:
 {{
 "problems": "the problem set here",
 "answers": "the concise answers",
-"insight": "more details of the answers or an insight related to the questions or theme",
-"joke": "a short joke about language learning for adult English learners and helpers"
+"insight": "more details of the answers or an insight related to the questions or theme"
 }}"""
     message = client.messages.create(
         # model="claude-sonnet-4-6",
@@ -106,14 +106,14 @@ def main():
             )
             answer_message = answer_message + "\n\n" + insight_message
         # append joke if available
-        if "joke" in quiz_data:
-            joke = quiz_data['joke']
-            if len(joke) > 1500:
-                joke = joke[:1500] + "\n*(truncated)*"
-            joke_message = (
-                f"😭 **Joke Time**\n{joke}"
-            )
-            answer_message = answer_message + "\n\n" + joke_message
+        # if "joke" in quiz_data:
+        #     joke = quiz_data['joke']
+        #     if len(joke) > 1500:
+        #         joke = joke[:1500] + "\n*(truncated)*"
+        #     joke_message = (
+        #         f"🎉 **Joke Time**\n{joke}"
+        #     )
+        #     answer_message = answer_message + "\n\n" + joke_message
         # print(f"Answer message:\n{answer_message}") # DEBUG
         post_to_discord(answer_message)
     print("Done!")
