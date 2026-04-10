@@ -168,7 +168,7 @@ def main():
         f"🧩 **Daily Puzzle — {category.title()}**\n\n"
         f"{puzzle_data['puzzle']}\n\n"
         f"*Think you know the answer? Share your solution below! "
-        f"The answer will be revealed tomorrow — please verify it yourself!* 🤓"
+        f"The answer will be revealed later — please verify it yourself!* 🤓"
     )
 
     post_to_discord(puzzle_message)

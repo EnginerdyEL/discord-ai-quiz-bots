@@ -94,7 +94,7 @@ def main():
     if "answers" in quiz_data:
         answer_message = (
             f"💡 **Answers to the {category.title()} Quiz:**\n\n"
-            f"||{quiz_data['answers']}||\n"
+            f"||{quiz_data['answers']}||\n\n"
             f"*Please verify the answers with an English Helper*"
         )
         # append insight if available
@@ -103,19 +103,9 @@ def main():
             if len(insight) > 1500:
                 insight = insight[:1500] + "\n*(truncated)*"
             insight_message = (
-                f"🤔 **Did You Know?**\n{insight}"
+                f"🤔 **Did You Know?**\n||{insight}||"
             )
             answer_message = answer_message + "\n\n" + insight_message
-        # append joke if available
-        # if "joke" in quiz_data:
-        #     joke = quiz_data['joke']
-        #     if len(joke) > 1500:
-        #         joke = joke[:1500] + "\n*(truncated)*"
-        #     joke_message = (
-        #         f"🎉 **Joke Time**\n{joke}"
-        #     )
-        #     answer_message = answer_message + "\n\n" + joke_message
-        # print(f"Answer message:\n{answer_message}") # DEBUG
         post_to_discord(answer_message)
     print(f"[{ts()}] Done!")
 
