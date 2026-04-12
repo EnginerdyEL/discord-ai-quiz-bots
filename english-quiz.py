@@ -2,9 +2,8 @@ import anthropic
 import json
 import os
 import random
-import requests
-from puzzle import ts
 from dotenv import load_dotenv
+from shared import ts, parse_json_response, post_to_discord_safe
 
 # Load secrets from .env for local testing
 load_dotenv()
@@ -22,63 +21,75 @@ CATEGORIES = [
     "grammar"
 ]
 
+BOT_NAME = "Daily English Quiz"
+
 
 def generate_quiz(category):
-    """Generate a quiz using the Anthropic API."""
+    """Generate an English quiz using the Anthropic API.
+    
+    Args:
+        category: Quiz category (e.g., "idioms", "phrasal verbs")
+        
+    Returns:
+        dict: Contains 'problems', 'answers', and 'insight'
+        
+    Raises:
+        json.JSONDecodeError: If response cannot be parsed as JSON
+    """
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
 
 The quiz should:
-- Have a clean, unambiguous problem statement and 5 questions about English {category} or the chosen sub-theme
+- Have a clean, unambiguous problem statement with exactly 5 questions about English {category} or the chosen sub-theme
 - Be challenging but doable with reasonable confidence
-- Have a specific answer to each question
-- Be humorous, interesting, or surprising at times (not required)
-- Keep the answer concise and significantly under 1500 characters
-- If multiple choice, ensure the answers are not all the same letter (e.g., not all answer choice A)
-- Provide a response consistent with Discord formatting:
-   - *italics* **bold** ***bold italics*** __underscore__ etc. 
+- Have a specific, unambiguous answer to each question
+- Be humorous, interesting, or surprising at times (not required, but appreciated)
+- Keep the answers concise and significantly under 1500 characters combined
+- If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)
+- Use Discord formatting: *italics* **bold** ***bold italics*** __underscore__ etc. where appropriate
+- Never include unescaped double quotes in string values; use single quotes or rephrase instead
 
-Only finalize the questions if the answers are unambiguous and meet all criteria.
+Only finalize the questions if the answers are unambiguous and meet all criteria above.
 
 Respond in this exact JSON format with no other text:
 {{
-"problems": "the problem set here",
-"answers": "the concise answers",
-"insight": "more details of the answers or an insight related to the questions or theme"
+"problems": "the problem set here with 5 questions",
+"answers": "the concise answers to all 5 questions, clearly numbered",
+"insight": "interesting details about the answers, or a broader insight related to the theme"
 }}"""
     message = client.messages.create(
-        # model="claude-sonnet-4-6",
         model="claude-haiku-4-5",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw = message.content[0].text
-    # Strip markdown code blocks if present
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = "\n".join(raw.split("\n")[1:-1])
-    # print(f"Raw response:\n{raw}") # DEBUG
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}")
-        print(f"Context: {raw[max(0,e.pos-50):e.pos+50]}")
-        raise
-
-
-def post_to_discord(message):
-    """Post a message to Discord via webhook."""
-    payload = {"content": message, "username": "Daily English Quiz"}
-    response = requests.post(DISCORD_WEBHOOK_URL, json=payload)
-    response.raise_for_status()
+    return parse_json_response(raw)
 
 
 def main():
     # Step 1: Generate today's quiz
     category = random.choice(CATEGORIES)
     print(f"[{ts()}] Generating {category} quiz")
-    quiz_data = generate_quiz(category)
+    
+    try:
+        quiz_data = generate_quiz(category)
+    except json.JSONDecodeError as e:
+        print(f"[{ts()}] Failed to generate quiz: {e}")
+        post_to_discord_safe(
+            "⚠️ Daily English Quiz encountered an error generating today's quiz. Please try again later.",
+            BOT_NAME,
+            DISCORD_WEBHOOK_URL
+        )
+        return
+    except Exception as e:
+        print(f"[{ts()}] Unexpected error during quiz generation: {e}")
+        post_to_discord_safe(
+            "⚠️ Daily English Quiz encountered an unexpected error. Please try again later.",
+            BOT_NAME,
+            DISCORD_WEBHOOK_URL
+        )
+        return
 
     # Step 2: Post today's quiz
     print(f"[{ts()}] Posting today's quiz")
@@ -87,26 +98,49 @@ def main():
         f"{quiz_data['problems']}\n\n"
         f"*Think you know the answers? Share below and check the answers!*"
     )
-    post_to_discord(quiz_message)
+    
+    if not post_to_discord_safe(quiz_message, BOT_NAME, DISCORD_WEBHOOK_URL):
+        print(f"[{ts()}] Error: Failed to post quiz (payload too long). Aborting.")
+        return
 
     # Step 3: Post the answers and insight separately from the problems
-    print(f"[{ts()}] Posting the answers")
-    if "answers" in quiz_data:
-        answer_message = (
-            f"💡 **Answers to the {category.title()} Quiz:**\n\n"
-            f"||{quiz_data['answers']}||\n\n"
-            f"*Please verify the answers with an English Helper*"
+    print(f"[{ts()}] Posting the answers and insight")
+    
+    answers = quiz_data.get("answers", "N/A")
+    insight = quiz_data.get("insight", "")
+    
+    # Validate insight length
+    if len(insight) > 1500:
+        insight = insight[:1500] + "\n*(truncated)*"
+    
+    answer_message = (
+        f"💡 **Answers to the {category.title()} Quiz:**\n\n"
+        f"||{answers}||\n\n"
+        f"*Please verify the answers with an English helper or native speaker*"
+    )
+    
+    # Append insight if available
+    if insight:
+        insight_message = (
+            f"🤔 **Did You Know?**\n\n"
+            f"{insight}"
         )
-        # append insight if available
-        if "insight" in quiz_data:
-            insight = quiz_data['insight']
-            if len(insight) > 1500:
-                insight = insight[:1500] + "\n*(truncated)*"
-            insight_message = (
-                f"🤔 **Did You Know?**\n||{insight}||"
-            )
-            answer_message = answer_message + "\n\n" + insight_message
-        post_to_discord(answer_message)
+        # Check combined length before appending
+        combined = answer_message + "\n\n" + insight_message
+        if len(combined) <= 2000:
+            answer_message = combined
+        else:
+            # Post separately if too long
+            if not post_to_discord_safe(answer_message, BOT_NAME, DISCORD_WEBHOOK_URL):
+                print(f"[{ts()}] Warning: Failed to post answer message")
+            if not post_to_discord_safe(insight_message, BOT_NAME, DISCORD_WEBHOOK_URL):
+                print(f"[{ts()}] Warning: Failed to post insight message")
+            print(f"[{ts()}] Done!")
+            return
+    
+    if not post_to_discord_safe(answer_message, BOT_NAME, DISCORD_WEBHOOK_URL):
+        print(f"[{ts()}] Warning: Failed to post answer and insight message")
+    
     print(f"[{ts()}] Done!")
 
 
