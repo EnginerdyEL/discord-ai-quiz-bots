@@ -20,6 +20,8 @@ CATEGORIES = [
     "geometry",
     "logic",
     "calculus",
+    "number series",
+    "algebraic riddles",
     "number theory"
 ]
 
