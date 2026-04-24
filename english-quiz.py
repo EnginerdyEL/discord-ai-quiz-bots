@@ -2,6 +2,7 @@ import anthropic
 import json
 import os
 import random
+import requests
 from dotenv import load_dotenv
 from shared import ts, parse_json_response, post_to_discord_safe
 
@@ -10,6 +11,8 @@ load_dotenv()
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+QUIZ_GIST_ID = os.environ.get("QUIZ_GIST_ID", "")
 
 CATEGORIES = [
     "idioms",
@@ -24,11 +27,59 @@ CATEGORIES = [
 BOT_NAME = "Daily English Quiz"
 
 
-def generate_quiz(category):
+def get_quiz_history():
+    """Read quiz history from GitHub Gist.
+    
+    Returns:
+        dict: Quiz history keyed by category, with questions per category
+              Returns empty dict if Gist is not configured or unavailable
+    """
+    if not GITHUB_TOKEN or not QUIZ_GIST_ID:
+        return {}
+    
+    try:
+        url = f"https://api.github.com/gists/{QUIZ_GIST_ID}"
+        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        content = response.json()["files"]["quiz_history.json"]["content"]
+        return json.loads(content)
+    except Exception as e:
+        print(f"[{ts()}] Warning: Could not read quiz history from Gist: {e}")
+        return {}
+
+
+def update_quiz_history(history_data):
+    """Write quiz history to GitHub Gist.
+    
+    Args:
+        history_data: Dictionary of quiz history by category
+    """
+    if not GITHUB_TOKEN or not QUIZ_GIST_ID:
+        return
+    
+    try:
+        url = f"https://api.github.com/gists/{QUIZ_GIST_ID}"
+        headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+        payload = {
+            "files": {
+                "quiz_history.json": {
+                    "content": json.dumps(history_data, indent=2)
+                }
+            }
+        }
+        response = requests.patch(url, headers=headers, json=payload, timeout=5)
+        response.raise_for_status()
+    except Exception as e:
+        print(f"[{ts()}] Warning: Could not save quiz history to Gist: {e}")
+
+
+def generate_quiz(category, recent_questions):
     """Generate an English quiz using the Anthropic API.
     
     Args:
         category: Quiz category (e.g., "idioms", "phrasal verbs")
+        recent_questions: List of recent questions from this category to avoid repeats
         
     Returns:
         dict: Contains 'problems', 'answers', and 'insight'
@@ -37,6 +88,18 @@ def generate_quiz(category):
         json.JSONDecodeError: If response cannot be parsed as JSON
     """
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    
+    # Build context about recent questions if history exists
+    history_context = ""
+    if recent_questions:
+        history_context = (
+            "\n\nAvoid repeating these recent questions on this topic:\n"
+        )
+        for i, question in enumerate(recent_questions[-20:], 1):  # Last 20 questions
+            # Truncate long questions
+            q_preview = question[:100] + "..." if len(question) > 100 else question
+            history_context += f"{i}. {q_preview}\n"
+    
     prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
 
 The quiz should:
@@ -45,9 +108,9 @@ The quiz should:
 - Have a specific, unambiguous answer to each question
 - Be humorous, interesting, or surprising at times (not required, but appreciated)
 - Keep the answers concise and significantly under 1500 characters combined
-- If using multiple choice, randomize the correct answer positions so that they are different letters (vary answer positions on at least 3)
+- If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)
 - Use Discord formatting: *italics* **bold** ***bold italics*** __underscore__ etc. where appropriate
-- Never include unescaped double quotes in string values; use single quotes or rephrase instead
+- Never include unescaped double quotes in string values; use single quotes or rephrase instead{history_context}
 
 Only finalize the questions if the answers are unambiguous and meet all criteria above.
 
@@ -68,12 +131,17 @@ Respond in this exact JSON format with no other text:
 
 
 def main():
-    # Step 1: Generate today's quiz
+    # Step 1: Read quiz history from Gist
+    print(f"[{ts()}] Reading quiz history from Gist")
+    quiz_history = get_quiz_history()
+    
+    # Step 2: Generate today's quiz
     category = random.choice(CATEGORIES)
-    print(f"[{ts()}] Generating {category} quiz")
+    recent_questions = quiz_history.get(category, [])
+    print(f"[{ts()}] Generating {category} quiz (avoiding {len(recent_questions)} recent questions)")
     
     try:
-        quiz_data = generate_quiz(category)
+        quiz_data = generate_quiz(category, recent_questions)
     except json.JSONDecodeError as e:
         print(f"[{ts()}] Failed to generate quiz: {e}")
         post_to_discord_safe(
@@ -91,7 +159,7 @@ def main():
         )
         return
 
-    # Step 2: Post today's quiz
+    # Step 3: Post today's quiz
     print(f"[{ts()}] Posting today's quiz")
     quiz_message = (
         f"📚 **Daily English Quiz — {category.title()}**\n\n"
@@ -103,7 +171,7 @@ def main():
         print(f"[{ts()}] Error: Failed to post quiz (payload too long). Aborting.")
         return
 
-    # Step 3: Post the answers and insight separately from the problems
+    # Step 4: Post the answers and insight separately from the problems
     print(f"[{ts()}] Posting the answers and insight")
     
     answers = quiz_data.get("answers", "N/A")
@@ -136,10 +204,24 @@ def main():
             if not post_to_discord_safe(insight_message, BOT_NAME, DISCORD_WEBHOOK_URL):
                 print(f"[{ts()}] Warning: Failed to post insight message")
             print(f"[{ts()}] Done!")
+            # Save history before returning
+            updated_history = recent_questions + [quiz_data['problems']]
+            if len(updated_history) > 20:
+                updated_history = updated_history[-20:]
+            quiz_history[category] = updated_history
+            update_quiz_history(quiz_history)
             return
     
     if not post_to_discord_safe(answer_message, BOT_NAME, DISCORD_WEBHOOK_URL):
         print(f"[{ts()}] Warning: Failed to post answer and insight message")
+    
+    # Step 5: Save quiz history to Gist
+    print(f"[{ts()}] Saving quiz history to Gist")
+    updated_history = recent_questions + [quiz_data['problems']]
+    if len(updated_history) > 20:
+        updated_history = updated_history[-20:]
+    quiz_history[category] = updated_history
+    update_quiz_history(quiz_history)
     
     print(f"[{ts()}] Done!")
 
