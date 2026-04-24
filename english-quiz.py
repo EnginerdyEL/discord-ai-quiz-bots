@@ -31,7 +31,7 @@ def get_quiz_history():
     """Read quiz history from GitHub Gist.
     
     Returns:
-        dict: Quiz history keyed by category, with questions per category
+        dict: Quiz history keyed by category
               Returns empty dict if Gist is not configured or unavailable
     """
     if not GITHUB_TOKEN or not QUIZ_GIST_ID:
@@ -105,14 +105,16 @@ def generate_quiz(category, recent_questions):
 The quiz should:
 - Have a clean, unambiguous problem statement with exactly 5 questions about English {category} or the chosen sub-theme
 - Be challenging but doable with reasonable confidence
-- Have a specific, unambiguous answer to each question
+- Have a specific, unambiguous answer to each question — there must be ONE clearly correct answer
+- For each question, ensure no other answer choice is equally valid, grammatically correct, or could be justified by regional/colloquial variants
+- Avoid questions where multiple answers could work or where informal/colloquial usage conflicts with the "correct" answer
 - Be humorous, interesting, or surprising at times (not required, but appreciated)
 - Keep the answers concise and significantly under 1500 characters combined
 - If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)
 - Use Discord formatting: *italics* **bold** ***bold italics*** __underscore__ etc. where appropriate
 - Never include unescaped double quotes in string values; use single quotes or rephrase instead{history_context}
 
-Only finalize the questions if the answers are unambiguous and meet all criteria above.
+Only finalize the questions if the answers are unambiguous and each question has exactly one defensible correct answer that meets all criteria above.
 
 Respond in this exact JSON format with no other text:
 {{
