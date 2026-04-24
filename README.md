@@ -168,7 +168,7 @@ Quizzes target B1 proficiency (intermediate) learners with challenging but achie
 When quizzes use multiple choice, answer positions are randomized to avoid patterns.
 
 **Question History Tracking**
-The bot maintains the last 20 questions per category to inform Claude during generation. The prompt instructs Claude to avoid repeating recent questions, reducing semantic duplicates like "ghosting", "flex", and "salty" that commonly repeat in slang quizzes.
+The bot maintains the last 10 sets of questions per category to inform Claude during generation. The prompt instructs Claude to avoid repeating recent questions, reducing semantic duplicates like "ghosting", "flex", and "salty" that commonly repeat in slang quizzes.
 
 **Insight and Context**
 Quizzes include an insight that explains the answers or provides additional context about the topic.

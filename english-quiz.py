@@ -95,9 +95,9 @@ def generate_quiz(category, recent_questions):
         history_context = (
             "\n\nAvoid repeating these recent questions on this topic:\n"
         )
-        for i, question in enumerate(recent_questions[-20:], 1):  # Last 20 questions
-            # Truncate long questions
-            q_preview = question[:100] + "..." if len(question) > 100 else question
+        for i, question in enumerate(recent_questions[-10:], 1):  # Last 10 sets of questions
+            # Truncate long question sets
+            q_preview = question[:500] + "..." if len(question) > 500 else question
             history_context += f"{i}. {q_preview}\n"
     
     prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
@@ -140,7 +140,7 @@ def main():
     # Step 2: Generate today's quiz
     category = random.choice(CATEGORIES)
     recent_questions = quiz_history.get(category, [])
-    print(f"[{ts()}] Generating {category} quiz (avoiding {len(recent_questions)} recent questions)")
+    print(f"[{ts()}] Generating {category} quiz (avoiding {len(recent_questions)} sets of recent questions)")
     
     try:
         quiz_data = generate_quiz(category, recent_questions)
@@ -208,8 +208,8 @@ def main():
             print(f"[{ts()}] Done!")
             # Save history before returning
             updated_history = recent_questions + [quiz_data['problems']]
-            if len(updated_history) > 20:
-                updated_history = updated_history[-20:]
+            if len(updated_history) > 10:
+                updated_history = updated_history[-10:]
             quiz_history[category] = updated_history
             update_quiz_history(quiz_history)
             return
@@ -220,8 +220,8 @@ def main():
     # Step 5: Save quiz history to Gist
     print(f"[{ts()}] Saving quiz history to Gist")
     updated_history = recent_questions + [quiz_data['problems']]
-    if len(updated_history) > 20:
-        updated_history = updated_history[-20:]
+    if len(updated_history) > 10:
+        updated_history = updated_history[-10:]
     quiz_history[category] = updated_history
     update_quiz_history(quiz_history)
     
