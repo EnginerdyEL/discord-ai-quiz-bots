@@ -16,6 +16,8 @@ Every day, Brainy automatically:
 Every day, English Quiz automatically:
 1. Generates and posts a new quiz using the Anthropic Claude API
 2. Posts the answers and insight in spoiler tags for self-verification
+3. Maintains a history of recent questions by category to minimize repeats
+4. Saves the quiz questions to GitHub Gist for future reference
 
 ## Puzzle categories
 
@@ -43,7 +45,7 @@ Quizzes are randomly selected from:
 - **Python 3.13+**
 - **Anthropic Claude Sonnet 4.6** — puzzle generation with two-method verification
 - **Anthropic Claude Haiku 4.5** — English quiz generation (cost-effective)
-- **GitHub Gist** — persistent storage for daily puzzle state and history (Brainy)
+- **GitHub Gist** — persistent storage for puzzle state, hints, difficulty, and quiz history
 - **requests** — webhook posting and Gist API calls
 - **GitHub Actions** — daily scheduling (cron job, not yet configured)
 
@@ -106,8 +108,9 @@ or
 python3 english-quiz.py
 ```
 
-### Initial Gist setup (Brainy only)
+### Initial Gist setup
 
+**For Brainy (required):**
 Create a secret Gist at gist.github.com with a file named `puzzle_state.json` containing:
 ```json
 {
@@ -121,6 +124,21 @@ Create a secret Gist at gist.github.com with a file named `puzzle_state.json` co
   "puzzle_history": []
 }
 ```
+
+**For English Quiz (optional):**
+To track quiz history and minimize question repeats, create a separate secret Gist with a file named `quiz_history.json` containing:
+```json
+{
+  "idioms": [],
+  "phrasal verbs": [],
+  "vocabulary": [],
+  "verb tenses": [],
+  "prepositions": [],
+  "slang": [],
+  "grammar": []
+}
+```
+Then add `QUIZ_GIST_ID` to your `.env`. See [QUIZ_HISTORY_SETUP.md](QUIZ_HISTORY_SETUP.md) for details.
 
 ## Features
 
@@ -149,6 +167,9 @@ Quizzes target B1 proficiency (intermediate) learners with challenging but achie
 **Multiple Choice Variation**
 When quizzes use multiple choice, answer positions are randomized to avoid patterns.
 
+**Question History Tracking**
+The bot maintains the last 20 questions per category to inform Claude during generation. The prompt instructs Claude to avoid repeating recent questions, reducing semantic duplicates like "ghosting", "flex", and "salty" that commonly repeat in slang quizzes.
+
 **Insight and Context**
 Quizzes include an insight that explains the answers or provides additional context about the topic.
 
@@ -176,10 +197,10 @@ To deploy to a different Discord server, create a webhook in the target channel 
 ## Ongoing Cost and Maintenance
 
 The bot leverages the Anthropic API. Each generation costs a fraction of a penny:
-- Brainy (Sonnet): ~0.002-0.003 USD per puzzle times the number of retries (up to 3)
+- Brainy (Sonnet): ~0.002-0.003 USD per puzzle
 - English Quiz (Haiku): ~0.0005 USD per quiz
 
-At 1 puzzle + 1 quiz per day + variable retries, you'd spend roughly $0.10-$0.50/month.
+At 1 puzzle + 1 quiz per day, you'd spend roughly $0.10-$0.15/month.
 
 ## Future Ideas
 
