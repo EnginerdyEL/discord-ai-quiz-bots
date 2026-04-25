@@ -108,10 +108,11 @@ The quiz should:
 - Have a specific, unambiguous answer to each question — there must be ONE clearly correct answer
 - For each question, ensure no other answer choice is equally valid, grammatically correct, or could be justified by regional/colloquial variants
 - Avoid questions where multiple answers could work or where informal/colloquial usage conflicts with the "correct" answer
+- When showing blanks in questions, use (...) to represent blanks to be filled in — NEVER use underscores (__) as they trigger Discord formatting
 - Be humorous, interesting, or surprising at times (not required, but appreciated)
 - Keep the answers concise and significantly under 1500 characters combined
 - If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)
-- Use Discord formatting: *italics* **bold** ***bold italics*** __underscore__ etc. where appropriate
+- Use Discord formatting: *italics* **bold** ***bold italics*** etc. where appropriate
 - Never include unescaped double quotes in string values; use single quotes or rephrase instead{history_context}
 
 Only finalize the questions if the answers are unambiguous and each question has exactly one defensible correct answer that meets all criteria above.
