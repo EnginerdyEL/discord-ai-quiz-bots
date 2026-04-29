@@ -21,7 +21,9 @@ CATEGORIES = [
     "verb tenses",
     "prepositions",
     "slang",
-    "grammar"
+    "pronunciation (IPA)",
+    "grammar",
+    "key word transformation"
 ]
 
 BOT_NAME = "Daily English Quiz"
@@ -100,7 +102,55 @@ def generate_quiz(category, recent_questions):
             q_preview = question[:500] + "..." if len(question) > 500 else question
             history_context += f"{i}. {q_preview}\n"
     
-    prompt = f"""Generate a {category} English quiz suitable for B1-level adult learners.
+    # Base prompt shared across all categories
+    base_prompt = f"""Generate an English quiz suitable for B1-level adult learners.
+
+The quiz should:
+- Have exactly 5 questions
+- When showing blanks in questions, use (...) to represent blanks to be filled in — NEVER use underscores (__) as they trigger Discord formatting
+- Use Discord formatting: *italics* **bold** ***bold italics*** etc. where appropriate
+- Never include unescaped double quotes in string values; use single quotes or rephrase instead{history_context}
+
+Only finalize if answers are unambiguous with one defensible correct answer.
+
+Respond in this exact JSON format with no other text:
+{{
+"problems": "the problem set here",
+"answers": "the answers, clearly numbered 1-5",
+"insight": "insights or tips related to the theme"
+}}"""
+
+    # Category-specific details
+    if category == "key word transformation":
+        category_prompt = """Generate a B1-C1 Key Word Transformation quiz in JSON format with the following strict rules.
+
+## Format
+- Exactly 5 questions.
+- Each question has: original sentence, incomplete second sentence with (...) for the gap, a keyword in **bold**.
+- 4 multiple-choice options (A-D). Each option is ONLY the words that fill (...), including the keyword exactly as given (same spelling, same tense, no added prefixes/suffixes).
+- Each option must be 2-8 words total (count the keyword as one word).
+- Provide answers as "1A, 2C, 3B...", and for each correct answer also show the full completed sentence.
+- Include a short "insight" about a common transformation error.
+
+## Critical rules to avoid wrong options
+1. **Keyword must be identical in every option** - no "been" vs "being", no "would" vs "will", no added 'ed' or 'ing'. If the keyword is "been", all options must contain the exact string "been".
+2. **Distractors must be grammatically possible** but change meaning or break a specific rule (e.g., wrong auxiliary, wrong word order, wrong preposition, wrong clause type). Never use nonsense strings.
+3. **No ambiguous correct answers** - only one option preserves the original meaning fully. The other three must change meaning in a clear, identifiable way (e.g. tense error, passive/active mismatch, wrong conditional).
+4. **Vary correct answer position** - avoid three consecutive questions with the same letter answer.
+
+## Self-check before output
+- For each question, verify that every distractor uses the keyword exactly as given (character-by-character match).
+- Verify that each distractor is a full, grammatical English phrase (even if wrong for meaning).
+- Verify that the correct answer is the only one that keeps the original sentence's tense, modality, and logical meaning.
+
+## Output JSON format
+{
+"problems": "Question 1:\nOriginal: '...'\nComplete: '... (...) ...'\nKeyword: ...\nA) ...\nB) ...\nC) ...\nD) ...\n\nQuestion 2: ...",
+"answers": "1. A - '...' (Full sentence: ...)\n2. C - '...' ...",
+"insight": "Tip about a common keyword transformation pitfall at B1 level."
+}"""
+    else:
+        category_prompt = f"""Generate a {category} English quiz.
 
 The quiz should:
 - Have a clean, unambiguous problem statement with exactly 5 questions about English {category} or the chosen sub-theme
@@ -108,21 +158,12 @@ The quiz should:
 - Have a specific, unambiguous answer to each question — there must be ONE clearly correct answer
 - For each question, ensure no other answer choice is equally valid, grammatically correct, or could be justified by regional/colloquial variants
 - Avoid questions where multiple answers could work or where informal/colloquial usage conflicts with the "correct" answer
-- When showing blanks in questions, use (...) to represent blanks to be filled in — NEVER use underscores (__) as they trigger Discord formatting
 - Be humorous, interesting, or surprising at times (not required, but appreciated)
 - Keep the answers concise and significantly under 1500 characters combined
-- If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)
-- Use Discord formatting: *italics* **bold** ***bold italics*** etc. where appropriate
-- Never include unescaped double quotes in string values; use single quotes or rephrase instead{history_context}
+- If using multiple choice, ensure the correct answers are not all the same letter (vary answer positions)"""
 
-Only finalize the questions if the answers are unambiguous and each question has exactly one defensible correct answer that meets all criteria above.
-
-Respond in this exact JSON format with no other text:
-{{
-"problems": "the problem set here with 5 questions",
-"answers": "the concise answers to all 5 questions, clearly numbered",
-"insight": "interesting details about the answers, or a broader insight related to the theme"
-}}"""
+    prompt = base_prompt + "\n\n" + category_prompt
+    
     message = client.messages.create(
         model="claude-haiku-4-5",
         max_tokens=2000,
