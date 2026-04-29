@@ -39,6 +39,7 @@ Quizzes are randomly selected from:
 - Prepositions
 - Slang
 - Grammar
+- And many more, within the script itself
 
 ## Tech stack
 

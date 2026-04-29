@@ -15,14 +15,34 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 QUIZ_GIST_ID = os.environ.get("QUIZ_GIST_ID", "")
 
 CATEGORIES = [
-    "idioms",
-    "phrasal verbs",
-    "vocabulary",
-    "verb tenses",
-    "prepositions",
-    "slang",
-    "pronunciation (IPA)",
-    "grammar",
+    "idioms",                       # Fixed expressions with figurative meaning (e.g., 'spill the beans')
+    "phrasal verbs",                # Verb + particle combinations (e.g., 'give up', 'look after')
+    "vocabulary",                   # General word meaning and usage
+    "verb tenses",                  # Past, present, future, perfect, continuous forms
+    "prepositions",                 # In, on, at, for, since, of, etc.
+    "slang",                        # Informal, colloquial words (e.g., 'gonna', 'lit')
+    "grammar",                      # Sentence structure, conditionals, passive voice, etc.
+    "pronunciation (IPA)",          # Standard pronunciations, using IPA
+    "false friends (cognates)",     # Eng word vs similar word in another language (e.g., 'actually' ≠ 'actualmente')
+    "easily confused words",        # Similar‑sounding Eng words with different meanings (e.g., 'accept/except')
+    "near-synonyms",                # Words with similar but not identical meaning (e.g., 'say/tell', 'listen/hear')
+    "collocation errors",           # Words that don't naturally go together (e.g., 'make a photo' → 'take a photo')
+    "prepositional verbs",          # Wrong preposition after a verb (e.g., 'depend of' → 'depend on')
+    "confusable adjectives",        # -ed vs -ing (bored/boring), or other adjective pairs
+    "confusable adverbs",           # 'hard/hardly', 'late/lately', 'near/nearly'
+    "tense mismatches",             # Wrong tense for time expression (e.g., 'I live here since 2020')
+    "countable vs uncountable",     # Many/much, few/little, article usage (e.g., 'an information')
+    "gerund vs infinitive",         # Verb pattern errors (e.g., 'I enjoy to read')
+    "conditional mix-ups",          # First vs second conditional, 'if' + 'will' errors
+    "passive vs active",            # Using active when passive is needed (e.g., 'The car repairs now')
+    "modal meaning errors",         # Wrong modal for degree of certainty (e.g., 'can' instead of 'might')
+    "silent letters",               # Letters not pronounced (e.g., 'doubt', 'island', 'receipt')
+    "homophones",                   # Same sound, diff spelling/meaning (e.g., 'there/their/they’re')
+    "homographs with stress",       # Same spelling, diff meaning/pronunciation (e.g., 'record' noun vs verb)
+    "common spelling errors",       # Frequent misspellings (e.g., 'necessary', 'accommodation')
+    "formality mismatches",         # Using informal language in formal contexts (e.g., 'cheers' instead of 'thank you')
+    "direct vs polite forms",       # Literal translation of polite requests (e.g., 'Give me water' → 'Could I have water?')
+    "literal translation errors",   # Word‑for‑word translations from L1 (e.g., 'I have 20 years' → 'I am 20')
     "key word transformation"
 ]
 
